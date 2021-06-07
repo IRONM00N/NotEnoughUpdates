@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CapeManager {
 
@@ -49,10 +51,10 @@ public class CapeManager {
 
     private String[] capes = new String[]{"patreon1", "patreon2", "fade", "contrib", "nullzee",
             "gravy", "space", "mcworld", "lava", "packshq", "mbstaff", "thebakery", "negative",
-            "void", "ironmoon", "krusty", "furf", "soldier", "dsm", "zera", "tunnel", "alexxoffi", "parallax", "jakethybro", "planets" };
+            "void", "ironmoon", "krusty", "furf", "soldier", "dsm", "zera", "tunnel", "alexxoffi", "parallax", "jakethybro", "planets", "skytils" };
     public Boolean[] specialCapes = new Boolean[]{ true, true, false, true, true,
             true, false, false, false, true, true, true, false,
-            false, true, false, true, true, true, true, false, true, true, true, false };
+            false, true, false, true, true, true, true, false, true, true, true, true, true };
 
     public static CapeManager getInstance() {
         return INSTANCE;
@@ -242,6 +244,8 @@ public class CapeManager {
         }
     }
 
+    private static final ExecutorService capeTicker = Executors.newCachedThreadPool();
+
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
@@ -274,7 +278,9 @@ public class CapeManager {
                             continue;
                         }
                         capeMap.get(playerUUID).getLeft().setCapeTexture(capeName);
-                        capeMap.get(playerUUID).getLeft().onTick(event, player);
+                        capeTicker.submit(() -> {
+                            capeMap.get(playerUUID).getLeft().onTick(event, player);
+                        });
                     } else {
                         toRemove.add(playerUUID);
                     }
@@ -284,7 +290,9 @@ public class CapeManager {
 
         if(hasLocalCape) {
             localCape.getLeft().setCapeTexture(localCape.getValue());
-            localCape.getLeft().onTick(event, Minecraft.getMinecraft().thePlayer);
+            capeTicker.submit(() -> {
+                localCape.getLeft().onTick(event, Minecraft.getMinecraft().thePlayer);
+            });
         }
         for(String playerName : toRemove) {
             capeMap.remove(playerName);

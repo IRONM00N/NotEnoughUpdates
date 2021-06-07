@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.moulberry.notenoughupdates.auction.CustomAHGui;
 import io.github.moulberry.notenoughupdates.core.BackgroundBlur;
 import io.github.moulberry.notenoughupdates.core.GuiScreenElementWrapper;
 import io.github.moulberry.notenoughupdates.core.util.lerp.LerpingInteger;
@@ -1111,11 +1112,15 @@ public class NEUOverlay extends Gui {
                 float cost1 = manager.auctionManager.getLowestBin(o1.get("internalname").getAsString());
                 float cost2 = manager.auctionManager.getLowestBin(o2.get("internalname").getAsString());
 
-                if(cost1 == -1) cost1 = manager.auctionManager.getCraftCost(o1.get("internalname").getAsString()).craftCost;
-                if(cost2 == -1) cost2 = manager.auctionManager.getCraftCost(o2.get("internalname").getAsString()).craftCost;
+                float craftCost1 = manager.auctionManager.getCraftCost(o1.get("internalname").getAsString()).craftCost;
+                float craftCost2 = manager.auctionManager.getCraftCost(o2.get("internalname").getAsString()).craftCost;
 
-                if(cost1 < cost2) return mult;
-                if(cost1 > cost2) return -mult;
+                float diff = (cost1 - craftCost1) - (cost2 - craftCost2);
+
+                if(diff > 0) return mult;
+                if(diff < 0) return -mult;
+                /*if(cost1 < cost2) return mult;
+                if(cost1 > cost2) return -mult;*/
             }
 
             String i1 = o1.get("internalname").getAsString();
@@ -1366,7 +1371,7 @@ public class NEUOverlay extends Gui {
     public float getWidthMult() {
         float scaleFMult = 1;
         if(Utils.peekGuiScale().getScaleFactor()==4) scaleFMult *= 0.9f;
-        if(manager.auctionManager.customAH.isRenderOverAuctionView()) scaleFMult *= 0.8f;
+        if(manager.auctionManager.customAH.isRenderOverAuctionView() || Minecraft.getMinecraft().currentScreen instanceof CustomAHGui) scaleFMult *= 0.8f;
         return (float)Math.max(0.5, Math.min(1.5, NotEnoughUpdates.INSTANCE.config.itemlist.paneWidthMult))*scaleFMult;
     }
 
@@ -1728,12 +1733,14 @@ public class NEUOverlay extends Gui {
 
         //Atomic reference used so that below lambda doesn't complain about non-effectively-final variable
         AtomicReference<JsonObject> tooltipToDisplay = new AtomicReference<>(null);
-        if(itemPaneOffsetFactor.getValue() < 1) {
+        //System.out.println(itemPaneOffsetFactor.getValue());
+        if(itemPaneOffsetFactor.getValue() < 0.99) {
             if(NotEnoughUpdates.INSTANCE.config.itemlist.bgBlurFactor > 0.5) {
                 BackgroundBlur.renderBlurredBackground(NotEnoughUpdates.INSTANCE.config.itemlist.bgBlurFactor,
                         width, height,
                         leftSide+getBoxPadding()-5, getBoxPadding()-5,
-                        paneWidth-getBoxPadding()*2+10, height-getBoxPadding()*2+10, true);
+                        paneWidth-getBoxPadding()*2+10, height-getBoxPadding()*2+10,
+                        itemPaneOffsetFactor.getValue() > 0.01);
                 Gui.drawRect(leftSide+getBoxPadding()-5, getBoxPadding()-5,
                         leftSide+getBoxPadding()-5+paneWidth-getBoxPadding()*2+10,
                         getBoxPadding()-5+height-getBoxPadding()*2+10, 0xc8101010);

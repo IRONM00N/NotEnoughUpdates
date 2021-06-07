@@ -8,12 +8,15 @@ import io.github.moulberry.notenoughupdates.core.config.Config;
 import io.github.moulberry.notenoughupdates.core.config.Position;
 import io.github.moulberry.notenoughupdates.core.config.annotations.*;
 import io.github.moulberry.notenoughupdates.core.config.gui.GuiPositionEditor;
+import io.github.moulberry.notenoughupdates.miscgui.GuiEnchantColour;
 import io.github.moulberry.notenoughupdates.miscgui.GuiInvButtonEditor;
 import io.github.moulberry.notenoughupdates.miscgui.NEUOverlayPlacements;
 import io.github.moulberry.notenoughupdates.overlays.*;
 import io.github.moulberry.notenoughupdates.util.SBInfo;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.ClientCommandHandler;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.util.vector.Vector2f;
 
 import java.util.ArrayList;
@@ -78,6 +81,9 @@ public class NEUConfig extends Config {
             case 7:
                 NotEnoughUpdates.INSTANCE.openGui = new GuiInvButtonEditor();
                 return;
+            case 8:
+                NotEnoughUpdates.INSTANCE.openGui = new GuiEnchantColour();
+                return;
 
         }
     }
@@ -117,6 +123,14 @@ public class NEUConfig extends Config {
     )
     public InventoryButtons inventoryButtons = new InventoryButtons();
 
+
+    @Expose
+    @Category(
+            name = "Slot Locking",
+            desc = "Slot Locking"
+    )
+    public SlotLocking slotLocking = new SlotLocking();
+
     @Expose
     @Category(
             name = "Tooltip Tweaks",
@@ -147,6 +161,13 @@ public class NEUConfig extends Config {
 
     @Expose
     @Category(
+            name = "Storage GUI",
+            desc = "Storage GUI"
+    )
+    public StorageGUI storageGUI = new StorageGUI();
+
+    @Expose
+    @Category(
             name = "Dungeons",
             desc = "Dungeons"
     )
@@ -166,6 +187,14 @@ public class NEUConfig extends Config {
             desc = "Mining"
     )
     public Mining mining = new Mining();
+
+
+    @Expose
+    @Category(
+            name = "Fishing",
+            desc = "Fishing"
+    )
+    public Fishing fishing = new Fishing();
 
     @Expose
     @Category(
@@ -256,7 +285,7 @@ public class NEUConfig extends Config {
 
         @Expose
         @ConfigOption(
-                name = "Gui Click Sounds",
+                name = "GUI Click Sounds",
                 desc = "Play click sounds in various NEU-related GUIs when pressing buttons"
         )
         @ConfigEditorBoolean
@@ -271,6 +300,26 @@ public class NEUConfig extends Config {
                 values = {"Off", "Commas", "Shortened"}
         )
         public int damageIndicatorStyle = 1;
+
+        @Expose
+        @ConfigOption(
+                name = "Edit Enchant Colours",
+                desc = "Change the colours of certain skyblock enchants"
+        )
+        @ConfigEditorButton(runnableId = 8, buttonText = "Open")
+        public boolean editEnchantColoursButton = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Chroma Text Speed",
+                desc = "Change the speed of chroma text for items names (/neucustomize) and enchant colours (/neuec) with the chroma colour code (&z)"
+        )
+        @ConfigEditorSlider(
+                minValue = 10,
+                maxValue = 500,
+                minStep = 10
+        )
+        public int chromaSpeed = 100;
     }
 
     public static class Notifications {
@@ -494,6 +543,69 @@ public class NEUConfig extends Config {
         public int clickType = 0;
     }
 
+    public static class SlotLocking {
+        @Expose
+        @ConfigOption(
+                name = "Enable Slot Locking",
+                desc = "Allows you to lock slots and create slot bindings"
+        )
+        @ConfigEditorBoolean
+        public boolean enableSlotLocking = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Enable Slot Binding",
+                desc = "Allows you to create slot bindings\nNote: \"Enable Slot Locking\" must be on"
+        )
+        @ConfigEditorBoolean
+        public boolean enableSlotBinding = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Don't Drop Bound Slots",
+                desc = "Slot bindings also act as locked slots (prevents dropping / moving in inventory)"
+        )
+        @ConfigEditorBoolean
+        public boolean bindingAlsoLocks = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Slot Lock Key",
+                desc = "Click this key to LOCK a slot\n" +
+                        "Hold this key and drag to BIND a slot"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_L)
+        public int slotLockKey = Keyboard.KEY_L;
+
+        @Expose
+        @ConfigOption(
+                name = "Lock Slots in Trade",
+                desc = "Prevents trading locked items in the custom trade windows"
+        )
+        @ConfigEditorBoolean
+        public boolean lockSlotsInTrade = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Slot Lock Sound",
+                desc = "Play a ding when locking/unlocking slots"
+        )
+        @ConfigEditorBoolean
+        public boolean slotLockSound = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Slot Lock Sound Vol.",
+                desc = "Set the volume of the ding sound"
+        )
+        @ConfigEditorSlider(
+                minValue = 0,
+                maxValue = 100,
+                minStep = 1
+        )
+        public float slotLockSoundVol = 20;
+    }
+
     public static class TooltipTweaks {
         @ConfigOption(
                 name = "Tooltip Price Information",
@@ -649,7 +761,7 @@ public class NEUConfig extends Config {
                 name = "Block Zapper Overlay",
                 desc = ""
         )
-        @ConfigEditorAccordion(id = 5)
+        @ConfigEditorAccordion(id = 6)
         public boolean zapperAccordion = false;
 
         @Expose
@@ -658,7 +770,7 @@ public class NEUConfig extends Config {
                 desc = "Show which blocks will be destroyed when using the Block Zapper"
         )
         @ConfigEditorBoolean
-        @ConfigAccordionId(id = 5)
+        @ConfigAccordionId(id = 6)
         public boolean enableZapperOverlay = true;
 
         @Expose
@@ -667,7 +779,7 @@ public class NEUConfig extends Config {
                 desc = "Change the colour of the ghost block outline"
         )
         @ConfigEditorColour
-        @ConfigAccordionId(id = 5)
+        @ConfigAccordionId(id = 6)
         public String zapperOverlayColour = "0:102:171:5:0";
 
         @ConfigOption(
@@ -743,40 +855,29 @@ public class NEUConfig extends Config {
         public boolean showBreak = true;
 
         @ConfigOption(
-                name = "Custom Rod Colours",
+                name = "Minion Crystal Radius Overlay",
                 desc = ""
         )
-        @ConfigEditorAccordion(id = 4)
-        public boolean rodAccordion = false;
+        @ConfigEditorAccordion(id = 5)
+        public boolean crystalAccordion = false;
 
         @Expose
         @ConfigOption(
-                name = "Enable Rod Colours",
-                desc = "Change the colour of your and other players' rod lines\n" +
-                        "Also fixes the position of the rod line"
+                name = "Enable Crystal Overlay",
+                desc = "Show a block overlay for the effective radius of minion crystals (farming, mining, etc)"
         )
         @ConfigEditorBoolean
-        @ConfigAccordionId(id = 4)
-        public boolean enableRodColours = true;
+        @ConfigAccordionId(id = 5)
+        public boolean enableCrystalOverlay = true;
 
         @Expose
         @ConfigOption(
-                name = "Own Rod Colour",
-                desc = "Change the colour of your own rod lines"
+                name = "Always Show Crystal Overlay",
+                desc = "Show the crystal overlay, even when a minion crystal is not being held"
         )
-        @ConfigEditorColour
-        @ConfigAccordionId(id = 4)
-        public String ownRodColour = "0:255:0:0:0";
-
-
-        @Expose
-        @ConfigOption(
-                name = "Other Rod Colour",
-                desc = "Change the colour of other players' rod lines"
-        )
-        @ConfigEditorColour
-        @ConfigAccordionId(id = 4)
-        public String otherRodColour = "0:255:0:0:0";
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 5)
+        public boolean alwaysShowCrystal = false;
     }
 
     public static class SkillOverlays {
@@ -1026,7 +1127,7 @@ public class NEUConfig extends Config {
                 desc = ""
         )
         @ConfigEditorAccordion(id = 0)
-        public boolean todoAccordion = false;
+        public boolean todoAccordion = true;
 
         @Expose
         @ConfigOption(
@@ -1035,7 +1136,7 @@ public class NEUConfig extends Config {
         )
         @ConfigEditorBoolean
         @ConfigAccordionId(id = 0)
-        public boolean todoOverlay = true;
+        public boolean todoOverlay = false;
 
         @Expose
         @ConfigOption(
@@ -1097,6 +1198,189 @@ public class NEUConfig extends Config {
         public boolean todoIcons = true;
     }
 
+    public static class StorageGUI {
+        @ConfigOption(
+                name = "Storage Overlay",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 1)
+        public boolean storageOverlayAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Enable Storage GUI",
+                desc = "Show a custom storage overlay when accessing /storage." +
+                        "Makes switching between pages much easier and also allows for searching through all storages"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 1)
+        public boolean enableStorageGUI = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Storage Height",
+                desc = "Change the height of the storage preview section. Increasing this allows more storages to be seen at once"
+        )
+        @ConfigEditorSlider(
+                minValue = 104,
+                maxValue = 312,
+                minStep = 26
+        )
+        @ConfigAccordionId(id = 1)
+        public int storageHeight = 208;
+
+        @Expose
+        @ConfigOption(
+                name = "Storage Style",
+                desc = "Change the visual style of the overlay"
+        )
+        @ConfigEditorDropdown(
+                values = {"Transparent", "Minecraft", "Dark", "Custom"}
+        )
+        @ConfigAccordionId(id = 1)
+        public int displayStyle = 0;
+
+        @Expose
+        @ConfigOption(
+                name = "Enderchest Preview",
+                desc = "Preview Enderchest pages when hovering over the selector on the left side"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 1)
+        public boolean enderchestPreview = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Preview",
+                desc = "Preview Backpacks when hovering over the selector on the left side"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 1)
+        public boolean backpackPreview = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Compact Vertically",
+                desc = "Remove the space between backpacks when there is a size discrepancy"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 1)
+        public boolean masonryMode = false;
+
+        @ConfigOption(
+                name = "Inventory Backpacks",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 0)
+        public boolean inventorySlotAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Inventory Backpacks",
+                desc = "Add a \"10th slot\" to your inventory which allows you to quickly access your backpacks"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 0)
+        public boolean showInvBackpack = false;
+
+        //public boolean showInvBackpack = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Side",
+                desc = "Set which side of the hotbar the backpack slot shows"
+        )
+        @ConfigEditorDropdown(
+                values = {"Left", "Right"}
+        )
+        @ConfigAccordionId(id = 0)
+        public int backpackHotbarSide = 0;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Peeking",
+                desc = "When the backpack is selected, show it's contents on your screen"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 0)
+        public boolean showInvBackpackPreview = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Opacity%",
+                desc = "Change the opacity of the backpack preview background"
+        )
+        @ConfigEditorSlider(
+                minValue = 0,
+                maxValue = 100,
+                minStep = 5
+        )
+        @ConfigAccordionId(id = 0)
+        public int backpackOpacity = 50;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Scroll Key",
+                desc = "Change the key which needs to be pressed in order to allow backpacks to be scrolled between"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_LSHIFT)
+        @ConfigAccordionId(id = 0)
+        public int backpackScrollKey = Keyboard.KEY_LSHIFT;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Hotkey",
+                desc = "Hotkey to quickly switch to the backpack slot"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_GRAVE)
+        @ConfigAccordionId(id = 0)
+        public int backpackHotkey = Keyboard.KEY_GRAVE;
+
+        @Expose
+        @ConfigOption(
+                name = "Arrow Key Backpacks",
+                desc = "Use arrow keys [LEFT],[RIGHT] to move between backpacks and [DOWN] to navigate backpack even when the slot is not selected. Keys are customizable below"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 0)
+        public boolean arrowKeyBackpacks = false;
+
+        @ConfigOption(
+                name = "Arrow Key Backpack Keybinds",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 2)
+        @ConfigAccordionId(id = 0)
+        public boolean backpackArrowAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Left",
+                desc = "Select the backpack to the left"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_LEFT)
+        @ConfigAccordionId(id = 2)
+        public int arrowLeftKey = Keyboard.KEY_LEFT;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Right",
+                desc = "Select the backpack to the right"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_RIGHT)
+        @ConfigAccordionId(id = 2)
+        public int arrowRightKey = Keyboard.KEY_RIGHT;
+
+        @Expose
+        @ConfigOption(
+                name = "Backpack Open",
+                desc = "Open the selected backpack"
+        )
+        @ConfigEditorKeybind(defaultKey = Keyboard.KEY_DOWN)
+        @ConfigAccordionId(id = 2)
+        public int arrowDownKey = Keyboard.KEY_DOWN;
+    }
+
     public static class EnchSolvers {
         @Expose
         @ConfigOption(
@@ -1105,6 +1389,14 @@ public class NEUConfig extends Config {
         )
         @ConfigEditorBoolean
         public boolean enableEnchantingSolvers = true;
+
+        /*@Expose
+        @ConfigOption(
+                name = "Prevent Misclicks",
+                desc = "Prevent accidentally failing the Chronomatron and Ultrasequencer experiments"
+        )
+        @ConfigEditorBoolean
+        public boolean preventMisclicks = true;*/
 
         @Expose
         @ConfigOption(
@@ -1290,10 +1582,11 @@ public class NEUConfig extends Config {
                 exampleText = {"\u00a73Goblin Slayer: \u00a7626.5%\n\u00a73Lucky Raffle: \u00a7c0.0%",
                         "\u00a73Mithril Powder: \u00a726,243",
                         "\u00a73Forge 1) \u00a79Diamonite\u00a77: \u00a7aReady!",
-                        "\u00a73Forge 2) \u00a77EMPTY\n\u00a73Forge 3) \u00a77EMPTY\n\u00a73Forge 4) \u00a77EMPTY"}
+                        "\u00a73Forge 2) \u00a77EMPTY\n\u00a73Forge 3) \u00a77EMPTY\n\u00a73Forge 4) \u00a77EMPTY",
+                        "\u00a73Pickaxe CD: \u00a7a78s"}
         )
         @ConfigAccordionId(id = 2)
-        public List<Integer> dwarvenText = new ArrayList<>(Arrays.asList(0, 1, 2, 3));
+        public List<Integer> dwarvenText = new ArrayList<>(Arrays.asList(0, 1, 4, 2, 3));
 
         @Expose
         @ConfigOption(
@@ -1334,6 +1627,225 @@ public class NEUConfig extends Config {
         @ConfigEditorBoolean
         public boolean titaniumAlert = true;
 
+
+        @Expose
+        @ConfigOption(
+                name = "Dwarven Mines Textures",
+                desc = "Allows texture packs to retexture blocks in the Dwarven Mines. If you don't have a texturepack that does this, you should leave this off"
+        )
+        @ConfigEditorBoolean
+        public boolean dwarvenTextures = false;
+
+        /*@Expose
+        @ConfigOption(
+                name = "Don't Mine Stone",
+                desc = "Prevent mining stone blocks in mining areas"
+        )
+        @ConfigEditorBoolean
+        public boolean dontMineStone = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Reveal Mist Creepers",
+                desc = "Make the creepers in the Dwarven Mines mist visible"
+        )
+        @ConfigEditorBoolean
+        public boolean revealMistCreepers = true;*/
+    }
+
+    public static class Fishing {
+        @Expose
+        @ConfigOption(
+                name = "Hide Other Players Fishing",
+                desc = "Convenience option to easily hide \u00a7lother players'\u00a7r bobbers, rod lines and fishing particles\n" +
+                        "The advanced options below allow you to set the precise colour, particles, etc."
+        )
+        @ConfigEditorBoolean
+        public boolean hideOtherPlayerAll = false;
+
+        @ConfigOption(
+                name = "Incoming Fish Warning",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 3)
+        public boolean incomingFishAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Incoming Fish Warning",
+                desc = "Display a yellow '!' when a fish is incoming and a red '!' when you need to pull the fish up. " +
+                        "The red '!' also takes your ping into account"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 3)
+        public boolean incomingFishWarning = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Hooked Sound",
+                desc = "Play a high-pitched ding sound when the '!' turns red"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 3)
+        public boolean incomingFishHookedSounds = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Approach Sound",
+                desc = "Play low-pitched ding sounds while the yellow '!' is visible"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 3)
+        public boolean incomingFishIncSounds = false;
+
+        @ConfigOption(
+                name = "Volumes",
+                desc = ""
+        )
+        @ConfigAccordionId(id = 3)
+        @ConfigEditorAccordion(id = 5)
+        public boolean incomingFishVolumeAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Hooked Sound Vol.",
+                desc = "Set the volume of the hooked sound"
+        )
+        @ConfigEditorSlider(
+                minValue = 0,
+                maxValue = 100,
+                minStep = 1
+        )
+        @ConfigAccordionId(id = 5)
+        public float incomingFishHookedSoundsVol = 25;
+
+        @Expose
+        @ConfigOption(
+                name = "Approach Sound Vol.",
+                desc = "Set the volume of the approaching sound"
+        )
+        @ConfigEditorSlider(
+                minValue = 0,
+                maxValue = 100,
+                minStep = 1
+        )
+        @ConfigAccordionId(id = 5)
+        public float incomingFishIncSoundsVol = 10;
+
+        @ConfigOption(
+                name = "Fishing Particles",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 0)
+        public boolean particleAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Enable Custom Particles",
+                desc = "Allow you to modify the particles that appear when a fish is incoming for you and other players"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 0)
+        public boolean enableCustomParticles = false;
+
+        @ConfigOption(
+                name = "Your Particles",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 1)
+        @ConfigAccordionId(id = 0)
+        public boolean yourParticlesAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Particle Type",
+                desc = "Change the type of the particle that is spawned\n" +
+                        "Particle types with (RGB) support custom colours\n" +
+                        "Set to 'NONE' to disable particles"
+        )
+        @ConfigEditorDropdown(
+                values = {"Default", "None", "Spark (RGB)", "Swirl (RGB)", "Dust (RGB)", "Flame", "Crit", "Magic Crit"}
+        )
+        @ConfigAccordionId(id = 1)
+        public int yourParticleType = 0;
+
+        @Expose
+        @ConfigOption(
+                name = "Custom Colour",
+                desc = "Set a custom colour for the particle\n" +
+                        "Only works for particle types with (RGB)"
+        )
+        @ConfigEditorColour
+        @ConfigAccordionId(id = 1)
+        public String yourParticleColour = "0:255:255:255:255";
+
+        @ConfigOption(
+                name = "Other Players' Particles",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 2)
+        @ConfigAccordionId(id = 0)
+        public boolean otherParticlesAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Particle Type",
+                desc = "Change the type of the particle that is spawned\n" +
+                        "Particle types with (RGB) support custom colours\n" +
+                        "Set to 'NONE' to disable particles"
+        )
+        @ConfigEditorDropdown(
+                values = {"Default", "None", "Spark (RGB)", "Swirl (RGB)", "Dust (RGB)", "Flame", "Crit", "Magic Crit"}
+        )
+        @ConfigAccordionId(id = 2)
+        public int otherParticleType = 0;
+
+        @Expose
+        @ConfigOption(
+                name = "Custom Colour",
+                desc = "Set a custom colour for the particle\n" +
+                        "Only works for particle types with (RGB)"
+        )
+        @ConfigEditorColour
+        @ConfigAccordionId(id = 2)
+        public String otherParticleColour = "0:255:255:255:255";
+
+        @ConfigOption(
+                name = "Rod Line Colours",
+                desc = ""
+        )
+        @ConfigEditorAccordion(id = 4)
+        public boolean rodAccordion = false;
+
+        @Expose
+        @ConfigOption(
+                name = "Enable Rod Line Colours",
+                desc = "Change the colour of your and other players' rod lines\n" +
+                        "Also fixes the position of the rod line"
+        )
+        @ConfigEditorBoolean
+        @ConfigAccordionId(id = 4)
+        public boolean enableRodColours = true;
+
+        @Expose
+        @ConfigOption(
+                name = "Own Rod Colour",
+                desc = "Change the colour of your own rod lines\n" +
+                        "You can set the opacity to '0' to HIDE"
+        )
+        @ConfigEditorColour
+        @ConfigAccordionId(id = 4)
+        public String ownRodColour = "0:255:0:0:0";
+
+        @Expose
+        @ConfigOption(
+                name = "Other Rod Colour",
+                desc = "Change the colour of other players' rod lines\n" +
+                        "You can set the opacity to '0' to HIDE"
+        )
+        @ConfigEditorColour
+        @ConfigAccordionId(id = 4)
+        public String otherRodColour = "0:255:0:0:0";
     }
 
     public static class NeuAuctionHouse {
@@ -1365,6 +1877,14 @@ public class NEUConfig extends Config {
                 minStep = 1f
         )
         public int ahNotification = 5;
+
+        @Expose
+        @ConfigOption(
+                name = "Price Filtering in NEU AH",
+                desc = "The ability to filter the price of items and their respective average BIN values"
+        )
+        @ConfigEditorBoolean
+        public boolean priceFiltering = false;
     }
 
     public static class ImprovedSBMenu {
@@ -1602,7 +2122,7 @@ public class NEUConfig extends Config {
         arr.add("/warp hub:Warp Hub:eyJ0aW1lc3RhbXAiOjE1NTkyMTU0MTY5MDksInByb2ZpbGVJZCI6IjQxZDNhYmMyZDc0OTQwMGM5MDkwZDU0MzRkMDM4MzFiIiwicHJvZmlsZU5hbWUiOiJNZWdha2xvb24iLCJzaWduYXR1cmVSZXF1aXJlZCI6dHJ1ZSwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlL2Q3Y2M2Njg3NDIzZDA1NzBkNTU2YWM1M2UwNjc2Y2I1NjNiYmRkOTcxN2NkODI2OWJkZWJlZDZmNmQ0ZTdiZjgifX19");
         arr.add("/warp dungeon_hub:Dungeon Hub:eyJ0aW1lc3RhbXAiOjE1Nzg0MDk0MTMxNjksInByb2ZpbGVJZCI6IjQxZDNhYmMyZDc0OTQwMGM5MDkwZDU0MzRkMDM4MzFiIiwicHJvZmlsZU5hbWUiOiJNZWdha2xvb24iLCJzaWduYXR1cmVSZXF1aXJlZCI6dHJ1ZSwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzliNTY4OTViOTY1OTg5NmFkNjQ3ZjU4NTk5MjM4YWY1MzJkNDZkYjljMWIwMzg5YjhiYmViNzA5OTlkYWIzM2QiLCJtZXRhZGF0YSI6eyJtb2RlbCI6InNsaW0ifX19fQ==");
         arr.add("/craft:Crafting Table:CRAFTING_TABLE");
-        arr.add("/enderchest:Ender Chest:ENDER_CHEST");
+        arr.add("/storage:Storage:CHEST");
         arr.add("/wardrobe:Wardrobe:LEATHER_CHESTPLATE");
         arr.add("/pets:Pets:BONE");
         arr.add("neuah:NEU Auction House:GOLD_BLOCK");
