@@ -81,7 +81,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class NotEnoughUpdates {
     public static final String MODID = "notenoughupdates";
     public static final String VERSION = "2.0.0-REL";
+    public static final String PRE_VERSION = "28.4";
     public static final int VERSION_ID = 20000;
+    public static final int PRE_VERSION_ID = 2804;
 
     public static NotEnoughUpdates INSTANCE = null;
 
@@ -302,6 +304,7 @@ public class NotEnoughUpdates {
         petRarityToColourMap.put("RARE", EnumChatFormatting.BLUE.toString());
         petRarityToColourMap.put("EPIC", EnumChatFormatting.DARK_PURPLE.toString());
         petRarityToColourMap.put("LEGENDARY", EnumChatFormatting.GOLD.toString());
+        petRarityToColourMap.put("MYTHIC", EnumChatFormatting.LIGHT_PURPLE.toString());
     }
     ScheduledExecutorService peekCommandExecutorService = null;
     SimpleCommand peekCommand = new SimpleCommand("peek", new SimpleCommand.ProcessCommandRunnable() {

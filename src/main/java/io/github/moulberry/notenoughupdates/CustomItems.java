@@ -61,6 +61,13 @@ public class CustomItems {
                   "39 legendary phoenix pets",
                   "",
                   "get flexed");
+    public static  JsonObject IRONM00N = create(
+            "IRONM00N",
+            "end_stone",
+            "IRONM00N",
+            "Your life has been a lie,",
+            "the moon is made out of iron."
+            );
 
     /**
      * SHAAAAAAAAAAAAAAAAAAME

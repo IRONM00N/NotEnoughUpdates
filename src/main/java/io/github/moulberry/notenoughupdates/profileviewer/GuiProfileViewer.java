@@ -1516,59 +1516,69 @@ public class GuiProfileViewer extends GuiScreen {
         Utils.drawStringCentered(selectedCollectionCategory.getDisplayName() + " Minions", Minecraft.getMinecraft().fontRendererObj,
                 guiLeft+326, guiTop+14, true, 4210752);
 
-        float MAX_MINION_TIER = 11f;
         List<String> minions = ProfileViewer.getCollectionCatToMinionMap().get(selectedCollectionCategory);
-        if(minions != null) {
-            for(int i=0; i<minions.size(); i++) {
+        if (minions != null) {
+            for (int i = 0; i < minions.size(); i++) {
                 String minion = minions.get(i);
-                if(minion != null) {
-                    JsonObject minionJson = NotEnoughUpdates.INSTANCE.manager.getItemInformation().get(minion+"_GENERATOR_1");
-                    if(minionJson != null) {
-                        int xIndex = i%COLLS_XCOUNT;
-                        int yIndex = i/COLLS_XCOUNT;
+                if (minion != null) {
+                    JsonObject misc = Constants.MISC;
+                    float MAX_MINION_TIER = Utils.getElementAsFloat(Utils.getElement(misc, "minions." + minion + "_GENERATOR"), 11);
 
-                        float x = 231+COLLS_XPADDING+(COLLS_XPADDING+20)*xIndex;
-                        float y = 7+COLLS_YPADDING+(COLLS_YPADDING+20)*yIndex;
+                    int tier = (int) Utils.getElementAsFloat(minionTiers.get(minion), 0);
+                    JsonObject minionJson;
+                    if (tier == 0) {
+                        minionJson = NotEnoughUpdates.INSTANCE.manager.getItemInformation().get(minion + "_GENERATOR_1");
+                    }
+                    else {
+                        minionJson = NotEnoughUpdates.INSTANCE.manager.getItemInformation().get(minion + "_GENERATOR_" + tier);
+                    }
+
+                    if (minionJson != null) {
+                        int xIndex = i % COLLS_XCOUNT;
+                        int yIndex = i / COLLS_XCOUNT;
+
+                        float x = 231 + COLLS_XPADDING + (COLLS_XPADDING + 20) * xIndex;
+                        float y = 7 + COLLS_YPADDING + (COLLS_YPADDING + 20) * yIndex;
 
                         String tierString;
-                        int tier = (int)Utils.getElementAsFloat(minionTiers.get(minion), 0);
-                        if(tier-1 >= romans.length || tier-1 < 0) {
+
+                        if (tier - 1 >= romans.length || tier - 1 < 0) {
                             tierString = String.valueOf(tier);
                         } else {
-                            tierString = romans[tier-1];
+                            tierString = romans[tier - 1];
                         }
 
                         Color color = new Color(128, 128, 128, 255);
                         int tierStringColour = color.getRGB();
-                        float completedness = tier/MAX_MINION_TIER;
+                        float completedness = tier / MAX_MINION_TIER;
 
                         completedness = Math.min(1, completedness);
-                        if(completedness >= 1) {
+                        if (completedness >= 1) {
                             tierStringColour = new Color(255, 215, 0).getRGB();
                         }
 
                         GlStateManager.color(1, 1, 1, 1);
                         Minecraft.getMinecraft().getTextureManager().bindTexture(pv_elements);
-                        Utils.drawTexturedRect(guiLeft+x, guiTop+y, 20, 20*(1-completedness),
-                                0, 20/256f, 0, 20*(1-completedness)/256f, GL11.GL_NEAREST);
-                        GlStateManager.color(1, 185/255f, 0, 1);
+                        Utils.drawTexturedRect(guiLeft + x, guiTop + y, 20, 20 * (1 - completedness),
+                                0, 20 / 256f, 0, 20 * (1 - completedness) / 256f, GL11.GL_NEAREST);
+                        GlStateManager.color(1, 185 / 255f, 0, 1);
                         Minecraft.getMinecraft().getTextureManager().bindTexture(pv_elements);
-                        Utils.drawTexturedRect(guiLeft+x, guiTop+y+20*(1-completedness), 20, 20*(completedness),
-                                0, 20/256f, 20*(1-completedness)/256f, 20/256f, GL11.GL_NEAREST);
+                        Utils.drawTexturedRect(guiLeft + x, guiTop + y + 20 * (1 - completedness), 20, 20 * (completedness),
+                                0, 20 / 256f, 20 * (1 - completedness) / 256f, 20 / 256f, GL11.GL_NEAREST);
 
-                        Utils.drawItemStack(NotEnoughUpdates.INSTANCE.manager.jsonToStack(minionJson), guiLeft+(int)x+2, guiTop+(int)y+2);
+                        Utils.drawItemStack(NotEnoughUpdates.INSTANCE.manager.jsonToStack(minionJson), guiLeft + (int) x + 2, guiTop + (int) y + 2);
 
-                        if(mouseX > guiLeft+(int)x+2 && mouseX < guiLeft+(int)x+18) {
-                            if(mouseY > guiTop+(int)y+2 && mouseY < guiTop+(int)y+18) {
+                        if (mouseX > guiLeft + (int) x + 2 && mouseX < guiLeft + (int) x + 18) {
+                            if (mouseY > guiTop + (int) y + 2 && mouseY < guiTop + (int) y + 18) {
                                 tooltipToDisplay = NotEnoughUpdates.INSTANCE.manager.jsonToStack(minionJson)
                                         .getTooltip(Minecraft.getMinecraft().thePlayer, false);
                             }
                         }
 
                         GlStateManager.color(1, 1, 1, 1);
-                        if(tier >= 0) {
+                        if (tier >= 0) {
                             Utils.drawStringCentered(tierString, fontRendererObj,
-                                    guiLeft+x+10, guiTop+y-4, true,
+                                    guiLeft + x + 10, guiTop + y - 4, true,
                                     tierStringColour);
                         }
                     }

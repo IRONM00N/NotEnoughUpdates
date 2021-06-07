@@ -103,6 +103,8 @@ public class NEUCape {
             shaderName = "tunnel";
         } else if(capeName.equalsIgnoreCase("planets")) {
             shaderName = "planets";
+        } else if (capeName.equalsIgnoreCase("test123")){
+            shaderName = "test123_cape";
         } else {
             shaderName = "shiny_cape";
         }
@@ -342,6 +344,12 @@ public class NEUCape {
                     Minecraft.getMinecraft().displayWidth,
                     Minecraft.getMinecraft().displayHeight
             ));
+        } else if (shaderName.equalsIgnoreCase("test123_cape")){
+            shaderManager.loadData(shaderId, "millis", (int) (System.currentTimeMillis() - startTime));
+            shaderManager.loadData(shaderId, "screensize", new Vector2f(
+                    Minecraft.getMinecraft().displayWidth,
+                    Minecraft.getMinecraft().displayHeight
+            ));
         }
     }
 
@@ -558,6 +566,9 @@ public class NEUCape {
                 eventMillis = currentTime;
                 eventLength = random.nextFloat() * 3000 + 3000;
             }
+        } else if (shaderName.equals("test123_cape")){
+            long currentTime = System.currentTimeMillis();
+
         }
 
         double playerAngle = getPlayerRenderAngle(player, 0);
