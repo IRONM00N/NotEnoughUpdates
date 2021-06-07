@@ -101,11 +101,16 @@ public class NEUEventListener {
                 JsonObject o = neu.manager.getJsonFromFile(updateJson);
 
                 String version = o.get("version").getAsString();
+                String preVersion = o.get("pre_version").getAsString();
 
                 boolean shouldUpdate = !NotEnoughUpdates.VERSION.equalsIgnoreCase(version);
+                boolean shouldPreUpdate = !NotEnoughUpdates.PRE_VERSION.equalsIgnoreCase(preVersion);
                 if(o.has("version_id") && o.get("version_id").isJsonPrimitive()) {
                     int version_id = o.get("version_id").getAsInt();
                     shouldUpdate = version_id > NotEnoughUpdates.VERSION_ID;
+                } else if (o.has("pre_version_id") && o.get("pre_version_id").isJsonPrimitive()){
+                    int pre_version_id = o.get("pre_version_id").getAsInt();
+                    shouldPreUpdate = pre_version_id > NotEnoughUpdates.PRE_VERSION_ID;
                 }
 
                 if(shouldUpdate) {
@@ -127,6 +132,31 @@ public class NEUEventListener {
                             line = sb.toString();
                         }
                         line = line.replaceAll("\\{version}", version);
+                        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(line));
+                    }
+
+                    neu.displayLinks(o);
+
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(""));
+                } else if (shouldPreUpdate){
+                    String pre_update_msg = o.get("pre_update_msg").getAsString();
+
+                    int first_len = -1;
+                    for(String line : pre_update_msg.split("\n")) {
+                        FontRenderer fr = Minecraft.getMinecraft().fontRendererObj;
+                        int len = fr.getStringWidth(line);
+                        if(first_len == -1) {
+                            first_len = len;
+                        }
+                        int missing_len = first_len-len;
+                        if(missing_len > 0) {
+                            StringBuilder sb = new StringBuilder(line);
+                            for(int i=0; i<missing_len/8; i++) {
+                                sb.insert(0, " ");
+                            }
+                            line = sb.toString();
+                        }
+                        line = line.replaceAll("\\{pre_version}", preVersion);
                         Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(line));
                     }
 
@@ -320,7 +350,7 @@ public class NEUEventListener {
 
                     if(neu.config.notifications.doRamNotif) {
                         long maxMemoryMB = Runtime.getRuntime().maxMemory()/1024L/1024L;
-                        if(maxMemoryMB > 4100 || true) {
+                        if(maxMemoryMB > 4100) {
                             notificationDisplayMillis = System.currentTimeMillis();
                             notificationLines = new ArrayList<>();
                             notificationLines.add(EnumChatFormatting.GRAY+"Too much memory allocated!");
