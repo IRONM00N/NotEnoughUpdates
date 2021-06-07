@@ -1,15 +1,15 @@
 package io.github.moulberry.notenoughupdates.util;
 
 import com.google.common.base.Splitter;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
+import com.google.gson.*;
 import com.mojang.authlib.Agent;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import com.mojang.authlib.yggdrasil.YggdrasilUserAuthentication;
 import io.github.moulberry.notenoughupdates.NotEnoughUpdates;
 import io.github.moulberry.notenoughupdates.util.TexLoc;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.audio.SoundHandler;
@@ -23,8 +23,14 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.model.IBakedModel;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.entity.EnumCreatureAttribute;
+import net.minecraft.entity.ai.attributes.AttributeModifier;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.event.HoverEvent;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -43,12 +49,16 @@ import org.lwjgl.util.glu.Project;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.Proxy;
 import java.nio.FloatBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
@@ -153,6 +163,7 @@ public class Utils {
         try {
             itemRender.renderItemAndEffectIntoGUI(stack, x, y);
         } catch(Exception e) {e.printStackTrace();} //Catch exceptions to ensure that hasEffectOverride is set back to false.
+        itemRender.renderItemOverlayIntoGUI(Minecraft.getMinecraft().fontRendererObj, stack, x, y, null);
         hasEffectOverride = false;
         itemRender.zLevel = 0;
         RenderHelper.disableStandardItemLighting();
@@ -194,6 +205,28 @@ public class Utils {
         return chromaString(str, 0, false);
     }
 
+    private static final Pattern CHROMA_REPLACE_PATTERN = Pattern.compile("\u00a7z(.+?)(?=\u00a7|$)");
+
+    public static String chromaStringByColourCode(String str) {
+        if(str.contains("\u00a7z")) {
+            Matcher matcher = CHROMA_REPLACE_PATTERN.matcher(str);
+
+            StringBuffer sb = new StringBuffer();
+
+            while(matcher.find()) {
+                matcher.appendReplacement(sb,
+                        Utils.chromaString(matcher.group(1))
+                                .replace("\\", "\\\\")
+                                .replace("$", "\\$")
+                );
+            }
+            matcher.appendTail(sb);
+
+            str = sb.toString();
+        }
+        return str;
+    }
+
     private static long startTime = 0;
     public static String chromaString(String str, float offset, boolean bold) {
         str = cleanColour(str);
@@ -201,11 +234,15 @@ public class Utils {
         long currentTimeMillis = System.currentTimeMillis();
         if(startTime == 0) startTime = currentTimeMillis;
 
+        int chromaSpeed = NotEnoughUpdates.INSTANCE.config.misc.chromaSpeed;
+        if(chromaSpeed < 10) chromaSpeed = 10;
+        if(chromaSpeed > 5000) chromaSpeed = 5000;
+
         StringBuilder rainbowText = new StringBuilder();
         int len = 0;
         for(int i=0; i<str.length(); i++) {
             char c = str.charAt(i);
-            int index = ((int)(offset+len/12f-(currentTimeMillis-startTime)/100))%rainbow.length;
+            int index = ((int)(offset+len/12f-(currentTimeMillis-startTime)/chromaSpeed))%rainbow.length;
             len += Minecraft.getMinecraft().fontRendererObj.getCharWidth(c);
             if(bold) len++;
 
@@ -268,6 +305,45 @@ public class Utils {
         }
 
         return "";
+    }
+
+    public static List<String> getRawTooltip(ItemStack stack) {
+        List<String> list = Lists.<String>newArrayList();
+        String s = stack.getDisplayName();
+
+        if (stack.hasDisplayName()) {
+            s = EnumChatFormatting.ITALIC + s;
+        }
+
+        s = s + EnumChatFormatting.RESET;
+
+        if (!stack.hasDisplayName() && stack.getItem() == Items.filled_map) {
+            s = s + " #" + stack.getItemDamage();
+        }
+
+        list.add(s);
+
+        if (stack.hasTagCompound()) {
+            if (stack.getTagCompound().hasKey("display", 10)) {
+                NBTTagCompound nbttagcompound = stack.getTagCompound().getCompoundTag("display");
+
+                if (nbttagcompound.hasKey("color", 3)) {
+                    list.add(EnumChatFormatting.ITALIC + StatCollector.translateToLocal("item.dyed"));
+                }
+
+                if (nbttagcompound.getTagId("Lore") == 9) {
+                    NBTTagList nbttaglist1 = nbttagcompound.getTagList("Lore", 8);
+
+                    if (nbttaglist1.tagCount() > 0) {
+                        for (int j1 = 0; j1 < nbttaglist1.tagCount(); ++j1) {
+                            list.add(EnumChatFormatting.DARK_PURPLE + "" + EnumChatFormatting.ITALIC + nbttaglist1.getStringTagAt(j1));
+                        }
+                    }
+                }
+            }
+        }
+
+        return list;
     }
 
     public static String floatToString(float f, int decimals) {
@@ -450,6 +526,7 @@ public class Utils {
     public static void drawTexturedRect(float x, float y, float width, float height, float uMin, float uMax, float vMin, float vMax, int filter) {
         GlStateManager.enableTexture2D();
         GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
@@ -826,14 +903,18 @@ public class Utils {
         drawHoveringText(textLines, mouseX, mouseY, screenWidth, screenHeight, maxTextWidth, font, true);
     }
 
-    public static JsonObject getConstant(String constant) {
+    public static JsonObject getConstant(String constant, Gson gson) {
+        return getConstant(constant, gson, JsonObject.class);
+    }
+
+    public static <T> T getConstant(String constant, Gson gson, Class<T> clazz) {
         File repo = NotEnoughUpdates.INSTANCE.manager.repoLocation;
         if(repo.exists()) {
             File jsonFile = new File(repo, "constants/"+constant+".json");
-            try {
-                return NotEnoughUpdates.INSTANCE.manager.getJsonFromFile(jsonFile);
-            } catch (Exception ignored) {
-            }
+            try(BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(jsonFile), StandardCharsets.UTF_8))) {
+                T obj = gson.fromJson(reader, clazz);
+                return obj;
+            } catch(Exception e) { return null; }
         }
         return null;
     }

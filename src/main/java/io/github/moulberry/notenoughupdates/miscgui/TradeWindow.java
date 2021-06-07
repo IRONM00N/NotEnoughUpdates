@@ -2,13 +2,11 @@ package io.github.moulberry.notenoughupdates.miscgui;
 
 import com.google.gson.JsonObject;
 import io.github.moulberry.notenoughupdates.NotEnoughUpdates;
-import io.github.moulberry.notenoughupdates.util.SBAIntegration;
-import io.github.moulberry.notenoughupdates.util.TexLoc;
+import io.github.moulberry.notenoughupdates.core.config.KeybindHelper;
+import io.github.moulberry.notenoughupdates.miscfeatures.SlotLocking;
 import io.github.moulberry.notenoughupdates.util.Utils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.inventory.ContainerChest;
@@ -56,23 +54,15 @@ public class TradeWindow {
     private static int lastBackpackY;
 
 
-    public static boolean hypixelTradeWindowActive() {
-        if(!NotEnoughUpdates.INSTANCE.hasSkyblockScoreboard()) return false;
-        GuiScreen guiScreen = Minecraft.getMinecraft().currentScreen;
-        if(guiScreen instanceof GuiChest) {
-            GuiChest eventGui = (GuiChest) guiScreen;
-            ContainerChest cc = (ContainerChest) eventGui.inventorySlots;
-            String containerName = cc.getLowerChestInventory().getDisplayName().getUnformattedText();
-            return containerName.trim().startsWith("You     ");
-        }
-        return false;
+    public static boolean hypixelTradeWindowActive(String containerName) {
+        return containerName != null && containerName.trim().startsWith("You     ");
     }
 
-    public static boolean tradeWindowActive() {
-        if(!NotEnoughUpdates.INSTANCE.isOnSkyblock()) return false;
+    public static boolean tradeWindowActive(String containerName) {
+        if(!NotEnoughUpdates.INSTANCE.hasSkyblockScoreboard()) return false;
         if(!NotEnoughUpdates.INSTANCE.config.tradeMenu.enableCustomTrade) return false;
 
-        if(hypixelTradeWindowActive()) {
+        if(hypixelTradeWindowActive(containerName)) {
             return true;
         }
 
@@ -103,6 +93,26 @@ public class TradeWindow {
                 Minecraft.getMinecraft().fontRendererObj,
                 x, y, false, len,
                 new Color(64, 64, 64, 255).getRGB());
+    }
+
+    private static int getPrice(String internalname) {
+        int pricePer = NotEnoughUpdates.INSTANCE.manager.auctionManager.getLowestBin(internalname);
+        if(pricePer == -1) {
+            JsonObject bazaarInfo = NotEnoughUpdates.INSTANCE.manager.auctionManager.getBazaarInfo(internalname);
+            if(bazaarInfo != null && bazaarInfo.has("avg_buy")) {
+                pricePer = (int)bazaarInfo.get("avg_buy").getAsFloat();
+            }
+        }
+        if(pricePer == -1) {
+            JsonObject info = NotEnoughUpdates.INSTANCE.manager.auctionManager.getItemAuctionInfo(internalname);
+            if(info != null && !NotEnoughUpdates.INSTANCE.manager.auctionManager.isVanillaItem(internalname) &&
+                    info.has("price") && info.has("count")) {
+                int auctionPricePer = (int)(info.get("price").getAsFloat() / info.get("count").getAsFloat());
+
+                pricePer = auctionPricePer;
+            }
+        }
+        return pricePer;
     }
 
     private static int processTopItems(ItemStack stack, Map<Integer, Set<String>> topItems,
@@ -159,19 +169,7 @@ public class TradeWindow {
                 } catch(Exception ignored) {}
             }
         } else {
-            JsonObject info = NotEnoughUpdates.INSTANCE.manager.auctionManager.getItemAuctionInfo(internalname);
-            int pricePer = -1;
-            if(info != null && !NotEnoughUpdates.INSTANCE.manager.auctionManager.isVanillaItem(internalname) &&
-                     info.has("price") && info.has("count")) {
-                int auctionPricePer = (int)(info.get("price").getAsFloat() / info.get("count").getAsFloat());
-
-                pricePer = auctionPricePer;
-            } else {
-                JsonObject bazaarInfo = NotEnoughUpdates.INSTANCE.manager.auctionManager.getBazaarInfo(internalname);
-                if(bazaarInfo != null && bazaarInfo.has("avg_buy")) {
-                    pricePer = (int)bazaarInfo.get("avg_buy").getAsFloat();
-                }
-            }
+            int pricePer = getPrice(internalname);
             if(pricePer > 0) {
                 topItemsStack.putIfAbsent(internalname, stack);
 
@@ -262,19 +260,7 @@ public class TradeWindow {
                             NBTTagCompound nbt = items.getCompoundTagAt(k).getCompoundTag("tag");
                             String internalname2 = NotEnoughUpdates.INSTANCE.manager.getInternalnameFromNBT(nbt);
                             if(internalname2 != null) {
-                                JsonObject info2 = NotEnoughUpdates.INSTANCE.manager.auctionManager.getItemAuctionInfo(internalname2);
-
-                                int pricePer2 = -1;
-                                if(info2 != null && info2.has("price") && info2.has("count")) {
-                                    int auctionPricePer2 = (int)(info2.get("price").getAsFloat() / info2.get("count").getAsFloat());
-
-                                    pricePer2 = auctionPricePer2;
-                                } else {
-                                    JsonObject bazaarInfo2 = NotEnoughUpdates.INSTANCE.manager.auctionManager.getBazaarInfo(internalname2);
-                                    if(bazaarInfo2 != null && bazaarInfo2.has("avg_buy")) {
-                                        pricePer2 = (int)bazaarInfo2.get("avg_buy").getAsFloat();
-                                    }
-                                }
+                                int pricePer2 = getPrice(internalname2);
                                 if(pricePer2 > 0) {
                                     int count2 = items.getCompoundTagAt(k).getByte("Count");
                                     price += pricePer2 * count2;
@@ -360,18 +346,8 @@ public class TradeWindow {
                     list.add(containerIndex);
                 }
             } else {
-                JsonObject info = NotEnoughUpdates.INSTANCE.manager.auctionManager.getItemAuctionInfo(internalname);
-                int price = -1;
-                if(info != null && info.has("price") && info.has("count")) {
-                    int auctionPricePer = (int)(info.get("price").getAsFloat() / info.get("count").getAsFloat());
-
-                    price = auctionPricePer * stack.stackSize;
-                } else {
-                    JsonObject bazaarInfo = NotEnoughUpdates.INSTANCE.manager.auctionManager.getBazaarInfo(internalname);
-                    if(bazaarInfo != null && bazaarInfo.has("avg_buy")) {
-                        price = (int)bazaarInfo.get("avg_buy").getAsFloat() * stack.stackSize;
-                    }
-                }
+                int price = getPrice(internalname);
+                if(price == -1) price = 0;
 
                 price += getBackpackValue(stack);
 
@@ -560,7 +536,13 @@ public class TradeWindow {
             int y = 104+18*(index / 9);
             if(index < 9) y = 180;
 
-            Utils.drawItemStack(stack, guiLeft+x, guiTop+y);
+            chest.drawSlot(new Slot(Minecraft.getMinecraft().thePlayer.inventory, index, guiLeft+x, guiTop+y));
+            //Utils.drawItemStack(stack, guiLeft+x, guiTop+y);
+
+            int col = 0x80ffffff;
+            if(SlotLocking.getInstance().isSlotIndexLocked(index)) {
+                col = 0x80ff8080;
+            }
 
             if(mouseX > guiLeft+x-1 && mouseX < guiLeft+x+18) {
                 if(mouseY > guiTop+y-1 && mouseY < guiTop+y+18) {
@@ -570,7 +552,7 @@ public class TradeWindow {
                     GlStateManager.disableDepth();
                     GlStateManager.colorMask(true, true, true, false);
                     Utils.drawGradientRect(guiLeft+x, guiTop+y,
-                            guiLeft+x + 16, guiTop+y + 16, -2130706433, -2130706433);
+                            guiLeft+x + 16, guiTop+y + 16, col, col);
                     GlStateManager.colorMask(true, true, true, true);
                     GlStateManager.enableLighting();
                     GlStateManager.enableDepth();
@@ -898,37 +880,9 @@ public class TradeWindow {
             }
         }
 
-        if(stackToRender == null && !SBAIntegration.isFreezeBackpack()) lastBackpack = null;
-        if(SBAIntegration.isFreezeBackpack()) {
-            if(lastBackpack != null) {
-                SBAIntegration.setActiveBackpack(lastBackpack, lastBackpackX, lastBackpackY);
-                GlStateManager.translate(0, 0, 100);
-                SBAIntegration.renderActiveBackpack(mouseX, mouseY, Minecraft.getMinecraft().fontRendererObj);
-                GlStateManager.translate(0, 0, -100);
-            }
-        } else {
-            if(stackToRender != null) {
-                String internalname = NotEnoughUpdates.INSTANCE.manager.getInternalNameForItem(stackToRender);
-                boolean renderedBackpack;
-                if(internalname != null && (internalname.endsWith("BACKPACK") || internalname.equals("NEW_YEAR_CAKE_BAG"))) {
-                    lastBackpack = stackToRender;
-                    lastBackpackX = mouseX;
-                    lastBackpackY = mouseY;
-                    renderedBackpack = SBAIntegration.setActiveBackpack(lastBackpack, lastBackpackX, lastBackpackY);
-                    if(renderedBackpack) {
-                        GlStateManager.translate(0, 0, 100);
-                        renderedBackpack = SBAIntegration.renderActiveBackpack(mouseX, mouseY, Minecraft.getMinecraft().fontRendererObj);
-                        GlStateManager.translate(0, 0, -100);
-                    }
-                } else {
-                    renderedBackpack = false;
-                }
-                if(!renderedBackpack) {
-                    lastBackpack = null;
-                    tooltipToDisplay = stackToRender.getTooltip(Minecraft.getMinecraft().thePlayer,
-                            Minecraft.getMinecraft().gameSettings.advancedItemTooltips);
-                }
-            }
+        if(stackToRender != null) {
+            tooltipToDisplay = stackToRender.getTooltip(Minecraft.getMinecraft().thePlayer,
+                    Minecraft.getMinecraft().gameSettings.advancedItemTooltips);
         }
 
         if(tooltipToDisplay != null) {
@@ -964,9 +918,12 @@ public class TradeWindow {
                 if(mouseX > guiLeft+x && mouseX < guiLeft+x+16) {
                     if(mouseY > guiTop+y && mouseY < guiTop+y+16) {
                         Slot slot = chest.inventorySlots.getSlotFromInventory(Minecraft.getMinecraft().thePlayer.inventory, index);
-                        Minecraft.getMinecraft().playerController.windowClick(
-                                chest.inventorySlots.windowId,
-                                slot.slotNumber, 2, 3, Minecraft.getMinecraft().thePlayer);
+                        if(!NotEnoughUpdates.INSTANCE.config.slotLocking.lockSlotsInTrade ||
+                                !SlotLocking.getInstance().isSlotLocked(slot)) {
+                            Minecraft.getMinecraft().playerController.windowClick(
+                                    chest.inventorySlots.windowId,
+                                    slot.slotNumber, 2, 3, Minecraft.getMinecraft().thePlayer);
+                        }
                         return;
                     }
                 }
@@ -1040,6 +997,39 @@ public class TradeWindow {
     }
 
     public static boolean keyboardInput() {
+        if(NotEnoughUpdates.INSTANCE.config.slotLocking.enableSlotLocking &&
+                NotEnoughUpdates.INSTANCE.config.slotLocking.lockSlotsInTrade &&
+                !Keyboard.isRepeatEvent() &&
+                KeybindHelper.isKeyPressed(NotEnoughUpdates.INSTANCE.config.slotLocking.slotLockKey)) {
+            ScaledResolution scaledResolution = new ScaledResolution(Minecraft.getMinecraft());
+            int width = scaledResolution.getScaledWidth();
+            int height = scaledResolution.getScaledHeight();
+
+            int mouseX = Mouse.getEventX() * width / Minecraft.getMinecraft().displayWidth;
+            int mouseY = height - Mouse.getEventY() * height / Minecraft.getMinecraft().displayHeight - 1;
+
+            int index=0;
+            for(ItemStack stack : Minecraft.getMinecraft().thePlayer.inventory.mainInventory) {
+                if(stack == null) {
+                    index++;
+                    continue;
+                }
+
+                int x = 8+18*(index % 9);
+                int y = 104+18*(index / 9);
+                if(index < 9) y = 180;
+
+                if(mouseX > guiLeft+x && mouseX < guiLeft+x+16) {
+                    if(mouseY > guiTop+y && mouseY < guiTop+y+16) {
+                        SlotLocking.getInstance().toggleLock(index);
+                        return true;
+                    }
+                }
+
+                index++;
+            }
+        }
+
         return Keyboard.getEventKey() != Keyboard.KEY_ESCAPE;
     }
 

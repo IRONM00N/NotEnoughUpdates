@@ -2,7 +2,6 @@ package io.github.moulberry.notenoughupdates.util;
 
 import com.google.gson.JsonObject;
 import io.github.moulberry.notenoughupdates.NotEnoughUpdates;
-import io.github.moulberry.notenoughupdates.miscfeatures.EnchantingSolvers;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.network.NetworkPlayerInfo;
@@ -17,7 +16,6 @@ import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -53,8 +51,10 @@ public class SBInfo {
 
     private long lastManualLocRaw = -1;
     private long lastLocRaw = -1;
-    private long joinedWorld = -1;
+    public long joinedWorld = -1;
+    public long unloadedWorld = -1;
     private JsonObject locraw = null;
+    public boolean isInDungeon = false;
 
     public String currentProfile = null;
 
@@ -72,12 +72,17 @@ public class SBInfo {
     }
 
     @SubscribeEvent
-    public void onWorldChange(WorldEvent.Load event) {
+    public void onWorldLoad(WorldEvent.Load event) {
         lastLocRaw = -1;
         locraw = null;
         mode = null;
         joinedWorld = System.currentTimeMillis();
         lastOpenContainerName = null;
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        unloadedWorld = System.currentTimeMillis();
     }
 
     private static final Pattern JSON_BRACKET_PATTERN = Pattern.compile("\\{.+}");
@@ -114,7 +119,14 @@ public class SBInfo {
         return mode;
     }
 
+    private static final String profilePrefix = "\u00a7r\u00a7e\u00a7lProfile: \u00a7r\u00a7a";
+    private static final String skillsPrefix = "\u00a7r\u00a7e\u00a7lSkills: \u00a7r\u00a7a";
+
+    private static final Pattern SKILL_LEVEL_PATTERN = Pattern.compile("([^0-9:]+) (\\d{1,2})");
+
     public void tick() {
+        isInDungeon = false;
+
         long currentTime = System.currentTimeMillis();
 
         if(Minecraft.getMinecraft().thePlayer != null &&
@@ -129,15 +141,27 @@ public class SBInfo {
         try {
             for(NetworkPlayerInfo info : Minecraft.getMinecraft().thePlayer.sendQueue.getPlayerInfoMap()) {
                 String name = Minecraft.getMinecraft().ingameGUI.getTabList().getPlayerName(info);
-                final String profilePrefix = "\u00a7r\u00a7e\u00a7lProfile: \u00a7r\u00a7a";
                 if(name.startsWith(profilePrefix)) {
                     currentProfile = Utils.cleanColour(name.substring(profilePrefix.length()));
+                } else if(name.startsWith(skillsPrefix)) {
+                    String levelInfo = name.substring(skillsPrefix.length()).trim();
+                    Matcher matcher = SKILL_LEVEL_PATTERN.matcher(Utils.cleanColour(levelInfo).split(":")[0]);
+                    if(matcher.find()) {
+                        try {
+                            int level = Integer.parseInt(matcher.group(2).trim());
+                            XPInformation.getInstance().updateLevel(matcher.group(1).toLowerCase().trim(), level);
+                        } catch(Exception ignored) {}
+                    }
                 }
             }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
 
+        try {
             Scoreboard scoreboard = Minecraft.getMinecraft().thePlayer.getWorldScoreboard();
 
-            ScoreObjective sidebarObjective = scoreboard.getObjectiveInDisplaySlot(1); //§707/14/20
+            ScoreObjective sidebarObjective = scoreboard.getObjectiveInDisplaySlot(1);
 
             List<Score> scores = new ArrayList<>(scoreboard.getSortedScores(sidebarObjective));
 
@@ -147,8 +171,14 @@ public class SBInfo {
                 ScorePlayerTeam scoreplayerteam1 = scoreboard.getPlayersTeam(score.getPlayerName());
                 String line = ScorePlayerTeam.formatPlayerName(scoreplayerteam1, score.getPlayerName());
                 line = Utils.cleanDuplicateColourCodes(line);
+
+                if(Utils.cleanColour(line).contains("Dungeon Cleared: ")) {
+                    isInDungeon = true;
+                }
+
                 lines.add(line);
             }
+
             if(lines.size() >= 5) {
                 date = Utils.cleanColour(lines.get(1)).trim();
                 //§74:40am

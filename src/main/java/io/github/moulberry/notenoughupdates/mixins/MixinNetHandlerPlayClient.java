@@ -3,18 +3,19 @@ package io.github.moulberry.notenoughupdates.mixins;
 import io.github.moulberry.notenoughupdates.miscfeatures.*;
 import io.github.moulberry.notenoughupdates.NotEnoughUpdates;
 import io.github.moulberry.notenoughupdates.util.SBInfo;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.network.Packet;
-import net.minecraft.network.play.client.C13PacketPlayerAbilities;
+import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.server.*;
-import org.lwjgl.opengl.Display;
+import net.minecraft.util.EnumParticleTypes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(NetHandlerPlayClient.class)
 public class MixinNetHandlerPlayClient {
@@ -29,9 +30,51 @@ public class MixinNetHandlerPlayClient {
         player.setPositionAndRotation(x, y, z, yaw, pitch);
     }
 
-    @Inject(method="handleSetSlot", at=@At("HEAD"))
+    @Redirect(method="handleParticles", at=@At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/multiplayer/WorldClient;spawnParticle(Lnet/minecraft/util/EnumParticleTypes;ZDDDDDD[I)V"
+    ))
+    public void handleParticles(WorldClient world, EnumParticleTypes particleTypes, boolean isLongDistance,
+                                double xCoord, double yCoord, double zCoord,
+                                double xOffset, double yOffset, double zOffset, int[] params) {
+        boolean override = FishingHelper.getInstance().onSpawnParticle(particleTypes, xCoord, yCoord, zCoord, xOffset, yOffset, zOffset);
+        if(!override) {
+            world.spawnParticle(particleTypes, isLongDistance, xCoord, yCoord, zCoord, xOffset, yOffset, zOffset, params);
+        }
+    }
+
+    @Inject(method="handleSpawnMob", at=@At("RETURN"))
+    public void handleSpawnMob(S0FPacketSpawnMob packetIn, CallbackInfo ci) {
+        //CollectionLogManager.getInstance().onEntityMetadataUpdated(packetIn.getEntityID());
+    }
+
+    @Inject(method="handleSetSlot", at=@At("RETURN"))
     public void handleSetSlot(S2FPacketSetSlot packetIn, CallbackInfo ci) {
         EnchantingSolvers.processInventoryContents(false);
+        StorageManager.getInstance().setSlotPacket(packetIn);
+    }
+
+    @Inject(method="handleOpenWindow", at=@At("RETURN"))
+    public void handleOpenWindow(S2DPacketOpenWindow packetIn, CallbackInfo ci) {
+        StorageManager.getInstance().openWindowPacket(packetIn);
+    }
+
+    @Inject(method="handleCloseWindow", at=@At("RETURN"))
+    public void handleCloseWindow(S2EPacketCloseWindow packetIn, CallbackInfo ci) {
+        StorageManager.getInstance().closeWindowPacket(packetIn);
+    }
+
+    @Inject(method="handleWindowItems", at=@At("RETURN"))
+    public void handleOpenWindow(S30PacketWindowItems packetIn, CallbackInfo ci) {
+        StorageManager.getInstance().setItemsPacket(packetIn);
+    }
+
+    @Inject(method="handleRespawn", at=@At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/PacketThreadUtil;checkThreadAndEnqueue(Lnet/minecraft/network/Packet;Lnet/minecraft/network/INetHandler;Lnet/minecraft/util/IThreadListener;)V",
+            shift = At.Shift.AFTER))
+    public void handleOpenWindow(S07PacketRespawn packetIn, CallbackInfo ci) {
+        FancyPortals.onRespawnPacket(packetIn);
     }
 
     @Inject(method="handleBlockChange", at=@At("HEAD"))
@@ -45,13 +88,12 @@ public class MixinNetHandlerPlayClient {
         FlyFix.onReceiveAbilities(packetIn);
     }
 
-    /*@Inject(method="addToSendQueue", at=@At("HEAD"))
+    @Inject(method="addToSendQueue", at=@At("HEAD"))
     public void addToSendQueue(Packet packet, CallbackInfo ci) {
-        if(packet instanceof C13PacketPlayerAbilities) {
-            C13PacketPlayerAbilities abilities = (C13PacketPlayerAbilities) packet;
-            FlyFix.onSendAbilities(abilities);
+        if(packet instanceof C0EPacketClickWindow) {
+            StorageManager.getInstance().clientSendWindowClick((C0EPacketClickWindow)packet);
         }
-    }*/
+    }
 
     @Inject(method="handlePlayerListHeaderFooter", at=@At("HEAD"))
     public void handlePlayerListHeaderFooter(S47PacketPlayerListHeaderFooter packetIn, CallbackInfo ci) {

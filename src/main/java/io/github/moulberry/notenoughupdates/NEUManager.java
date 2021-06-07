@@ -3,6 +3,8 @@ package io.github.moulberry.notenoughupdates;
 import com.google.common.collect.Lists;
 import com.google.gson.*;
 import io.github.moulberry.notenoughupdates.auction.APIManager;
+import io.github.moulberry.notenoughupdates.miscfeatures.StorageManager;
+import io.github.moulberry.notenoughupdates.miscgui.GuiItemCustomize;
 import io.github.moulberry.notenoughupdates.miscgui.GuiItemRecipe;
 import io.github.moulberry.notenoughupdates.util.Constants;
 import io.github.moulberry.notenoughupdates.util.HypixelApi;
@@ -73,8 +75,6 @@ public class NEUManager {
     public File configLocation;
     public File repoLocation;
     public File configFile;
-    public File itemRenameFile;
-    public JsonObject itemRenameJson;
 
     public NEUManager(NotEnoughUpdates neu, File configLocation) {
         this.neu = neu;
@@ -85,12 +85,6 @@ public class NEUManager {
 
         this.repoLocation = new File(configLocation, "repo");
         repoLocation.mkdir();
-
-        this.itemRenameFile = new File(configLocation, "itemRename.json");
-        itemRenameJson = getJsonFromFile(itemRenameFile);
-        if(itemRenameJson == null) {
-            itemRenameJson = new JsonObject();
-        }
     }
 
     public void setCurrentProfile(String currentProfile) {
@@ -101,8 +95,11 @@ public class NEUManager {
         return SBInfo.getInstance().currentProfile;
     }
 
-    public void saveItemRenameConfig() {
-        try { writeJson(itemRenameJson, itemRenameFile); } catch(IOException ignored) {}
+    public <T> T getJsonFromFile(File file, Class<T> clazz) {
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            T obj = gson.fromJson(reader, clazz);
+            return obj;
+        } catch(Exception e) { return null; }
     }
 
     /**
@@ -247,16 +244,12 @@ public class NEUManager {
                         } catch (IOException e) {
                         }
                     }
-
-                    Constants.reload();
                 }
             } catch(Exception e) {
                 e.printStackTrace();
             } finally {
                 if(dialog != null) dialog.dispose();
             }
-
-            System.err.println("First load");
 
             File items = new File(repoLocation, "items");
             if(items.exists()) {
@@ -272,9 +265,13 @@ public class NEUManager {
                     }
                 }
             }
-        });
 
-        System.err.println("Second load");
+            try {
+                Constants.reload();
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+        });
 
         File items = new File(repoLocation, "items");
         if(items.exists()) {
@@ -289,6 +286,12 @@ public class NEUManager {
                     }
                 }
             }
+        }
+
+        try {
+            Constants.reload();
+        } catch(Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -687,6 +690,8 @@ public class NEUManager {
                             internalname += ";3"; break;
                         case "LEGENDARY":
                             internalname += ";4"; break;
+                        case "MYTHIC":
+                            internalname += ";5"; break;
                     }
                 }
             }
@@ -1301,6 +1306,8 @@ public class NEUManager {
                                 tier = "EPIC"; break;
                             case "EPIC":
                                 tier = "LEGENDARY"; break;
+                            case "LEGENDARY":
+                                tier = "MYTHIC"; break;
                         }
                     }
                 }
